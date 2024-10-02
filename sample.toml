@@ -1,0 +1,71 @@
+# Build Tool Configuration
+
+# General build configuration
+[build]
+c_standard = "c11"             # Specify the C standard (e.g., c99, c11, gnu11, etc.)
+compiler = "gcc"               # Default compiler (can be overridden in subprojects)
+optimization_flags = "-O2"     # Optimization flags
+parallel_jobs = 4              # Number of parallel build jobs
+target = "x86_64"              # Target platform (can be more specific based on architecture)
+output_dir = "build/"          # Directory where binaries/libraries will be placed
+
+# Dependencies from external sources (version management supported)
+[dependencies]
+# Library 1 fetched from a git repo (version is tagged)
+[[dependencies.remote]]
+name = "mylib"
+version = "v1.0.1"
+source = "https://github.com/example/mylib.git"
+include_dir = "mylib/include"   # Where the include files will be located
+lib_dir = "mylib/lib"           # Where library files will be located (can also be auto-detected)
+
+# Library 2 with a different version fetched from git
+[[dependencies.remote]]
+name = "mylib"
+version = "v2.3.1"
+source = "https://github.com/example/mylib.git"
+include_dir = "mylib_v2/include"
+lib_dir = "mylib_v2/lib"
+
+# Subprojects (each subproject can have its own configuration)
+[[subprojects]]
+name = "core"
+type = "library"                  # Can be "binary", "library", or "header-only"
+src_dir = "src/core"              # Directory where source files are located
+include_dirs = ["src/core/include"]
+dependencies = ["mylib"]           # List of dependencies for this subproject
+output_name = "libcore.a"          # Output file (static library in this case)
+
+[[subprojects]]
+name = "game"
+type = "binary"
+src_dir = "src/game"
+include_dirs = ["src/game/include", "src/core/include"]
+dependencies = ["core", "mylib_v2"]  # This binary depends on core (local library) and mylib_v2 (remote)
+output_name = "game_executable"
+
+# Header-only libraries
+[[subprojects]]
+name = "mathlib"
+type = "header-only"
+include_dirs = ["src/mathlib/include"]
+
+# Custom build rules for assets (like Vulkan shaders or any custom source)
+# These rules can specify specific source files, output locations, and triggers (e.g., change detection)
+[[custom_build_rules]]
+name = "vulkan_shaders"
+description = "Compile shaders to SPIR-V"
+src_dir = "assets/shaders"
+output_dir = "assets/compiled_shaders"
+trigger_extensions = [".vert", ".frag"]  # Only compile files with these extensions
+command = "glslangValidator -V {input} -o {output}"   # How to compile shaders (using placeholders for input/output)
+rebuild_if_changed = true   # This ensures shaders are compiled only if the source file changes
+
+# Compiler flags for specific subprojects (overriding global compiler settings)
+[build_overrides.core]
+c_standard = "gnu11"
+compiler_flags = "-Wall -Wextra"
+
+[build_overrides.game]
+c_standard = "c17"
+compiler_flags = "-Wall -Wpedantic -O3"
