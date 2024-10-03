@@ -2,15 +2,16 @@
 
 # General build configuration
 [build]
-c_standard = "c11"             # Specify the C standard (e.g., c99, c11, gnu11, etc.)
-compiler = "gcc"               # Default compiler (can be overridden in subprojects)
-optimization_flags = "-O2"     # Optimization flags
-parallel_jobs = 4              # Number of parallel build jobs
-target = "x86_64"              # Target platform (can be more specific based on architecture)
-output_dir = "build/"          # Directory where binaries/libraries will be placed
+c_standard = "c11"				   # Specify the C standard (e.g., c99, c11, gnu11, etc.)
+compiler = "gcc"				   # Default compiler (can be overridden in subprojects)
+global_cflags = "-Wall -Wextra"	   # Optimization flags
+debug_flags = "-g"				   # Debug flags
+release_flags = "-O3"			   # Release flags
+parallel_jobs = 4				   # Number of parallel build jobs
+output_dir = "build/"			   # Directory where binaries/libraries will be placed
 
 # Dependencies from external sources (version management supported)
-[dependencies]
+[dependencies] # This section can be omitted if no dependencies
 # Library 1 fetched from a git repo (version is tagged)
 [[dependencies.remote]]
 name = "mylib"
@@ -27,22 +28,23 @@ source = "https://github.com/example/mylib.git"
 include_dir = "mylib_v2/include"
 lib_dir = "mylib_v2/lib"
 
+[[dependencies.pkg_config]]
+name = "freetype"
+pkg_config_query = "freetype2"
+
+[[dependencies.manual]]
+name = "glfw"
+#cflags = ""
+ldflags = "-lglfw"
+
 # Subprojects (each subproject can have its own configuration)
 [[subprojects]]
 name = "core"
-type = "library"                  # Can be "binary", "library", or "header-only"
-src_dir = "src/core"              # Directory where source files are located
+type = "library"								# Can be "binary", "library", or "header-only"
+src_dir = "src/core"							# Directory where source files are located
 include_dirs = ["src/core/include"]
-dependencies = ["mylib"]           # List of dependencies for this subproject
-output_name = "libcore.a"          # Output file (static library in this case)
-
-[[subprojects]]
-name = "game"
-type = "binary"
-src_dir = "src/game"
-include_dirs = ["src/game/include", "src/core/include"]
-dependencies = ["core", "mylib_v2"]  # This binary depends on core (local library) and mylib_v2 (remote)
-output_name = "game_executable"
+dependencies = ["mylib", "freetype", "glfw"]	# List of dependencies for this subproject
+output_name = "libcore.a"						# Output file (static library in this case)
 
 # Header-only libraries
 [[subprojects]]
@@ -50,22 +52,32 @@ name = "mathlib"
 type = "header-only"
 include_dirs = ["src/mathlib/include"]
 
+[[subprojects]]
+name = "game"
+type = "binary"
+src_dir = "src/game"
+include_dirs = ["src/game/include", "src/core/include"]
+dependencies = ["core", "mylib_v2"]					# This binary depends on core (local library) and mylib_v2 (remote)
+output_name = "game_executable"
+
 # Custom build rules for assets (like Vulkan shaders or any custom source)
 # These rules can specify specific source files, output locations, and triggers (e.g., change detection)
 [[custom_build_rules]]
-name = "vulkan_shaders"
-description = "Compile shaders to SPIR-V"
+name = "vulkan_vertex_shaders"
+description = "Compile vertex shaders to SPIR-V"
 src_dir = "assets/shaders"
 output_dir = "assets/compiled_shaders"
-trigger_extensions = [".vert", ".frag"]  # Only compile files with these extensions
-command = "glslangValidator -V {input} -o {output}"   # How to compile shaders (using placeholders for input/output)
-rebuild_if_changed = true   # This ensures shaders are compiled only if the source file changes
+trigger_extensions = [".vert"]						# Only compile files with these extensions
+output_extension = ".spv"							# Output files will have this extension
+command = "glslc -o $out -fshader-stage=vert $in"   # How to compile shaders (using placeholders for input/output)
+rebuild_rule = "if-changed"							# Only rebuild if the source files change (Possible values are "if-changed", "always", "on-trigger")
 
-# Compiler flags for specific subprojects (overriding global compiler settings)
-[build_overrides.core]
-c_standard = "gnu11"
-compiler_flags = "-Wall -Wextra"
-
-[build_overrides.game]
-c_standard = "c17"
-compiler_flags = "-Wall -Wpedantic -O3"
+[[custom_build_rules]]
+name = "vulkan_fragment_shaders"
+description = "Compile fragment shaders to SPIR-V"
+src_dir = "assets/shaders"
+output_dir = "assets/compiled_shaders"
+trigger_extensions = [".frag"]							# Only compile files with these extensions
+output_extension = ".spv"								# Output files will have this extension
+command = "glslc -o ${out} -fshader-stage=frag ${in}"   # How to compile shaders (using placeholders for input/output)
+rebuild_rule = "if-changed"

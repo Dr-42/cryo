@@ -28,7 +28,6 @@ pub struct BuildConfig {
     pub dependencies: Dependencies,
     pub subprojects: Vec<SubProject>,
     pub custom_build_rules: Option<Vec<CustomBuildRule>>,
-    pub build_overrides: Option<BuildOverrides>,
 }
 
 // General build configuration
@@ -36,9 +35,10 @@ pub struct BuildConfig {
 pub struct BuildSettings {
     pub c_standard: String,
     pub compiler: String,
-    pub optimization_flags: Option<String>,
+    pub global_cflags: Option<String>,
+    pub debug_flags: Option<String>,
+    pub release_flags: Option<String>,
     pub parallel_jobs: Option<u32>,
-    pub target: Option<String>,
     pub output_dir: String,
 }
 
@@ -46,6 +46,8 @@ pub struct BuildSettings {
 #[derive(Debug, Deserialize, Serialize)]
 pub struct Dependencies {
     pub remote: Vec<RemoteDependency>,
+    pub pkg_config: Vec<PkgConfigDependency>,
+    pub manual: Vec<ManualDependency>,
 }
 
 #[derive(Debug, Deserialize, Serialize)]
@@ -55,6 +57,28 @@ pub struct RemoteDependency {
     pub source: String,
     pub include_dir: Option<String>,
     pub lib_dir: Option<String>,
+}
+
+#[derive(Debug, Deserialize, Serialize)]
+pub struct PkgConfigDependency {
+    pub name: String,
+    pub pkg_config_query: String,
+}
+
+#[derive(Debug, Deserialize, Serialize)]
+pub struct ManualDependency {
+    pub name: String,
+    pub cflags: Option<String>,
+    pub ldflags: Option<String>,
+}
+
+// Enum for subproject type
+#[derive(Debug, Deserialize, Serialize)]
+#[serde(rename_all = "kebab-case")] // Matches the TOML string "binary", "library", "header-only"
+pub enum SubProjectType {
+    Binary,
+    Library,
+    HeaderOnly,
 }
 
 // Subprojects (binaries, libraries, or header-only)
@@ -71,10 +95,10 @@ pub struct SubProject {
 // Enum for subproject type
 #[derive(Debug, Deserialize, Serialize)]
 #[serde(rename_all = "kebab-case")] // Matches the TOML string "binary", "library", "header-only"
-pub enum SubProjectType {
-    Binary,
-    Library,
-    HeaderOnly,
+pub enum CustomBuildRuleType {
+    IfChanged,
+    Always,
+    OnTrigger,
 }
 
 // Custom build rules for assets like Vulkan shaders
@@ -85,21 +109,9 @@ pub struct CustomBuildRule {
     pub src_dir: String,
     pub output_dir: String,
     pub trigger_extensions: Vec<String>,
+    pub output_extension: String,
     pub command: String,
-    pub rebuild_if_changed: Option<bool>,
-}
-
-// Build overrides for specific subprojects (optional)
-#[derive(Debug, Deserialize, Serialize)]
-pub struct BuildOverrides {
-    pub core: Option<SubProjectBuildOverride>,
-    pub game: Option<SubProjectBuildOverride>,
-}
-
-#[derive(Debug, Deserialize, Serialize)]
-pub struct SubProjectBuildOverride {
-    pub c_standard: Option<String>,
-    pub compiler_flags: Option<String>,
+    pub rebuild_rule: CustomBuildRuleType,
 }
 
 fn load_config(file_path: &str) -> Result<BuildConfig, Error> {
