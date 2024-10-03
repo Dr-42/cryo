@@ -2,6 +2,7 @@
 
 # General build configuration
 [build]
+version = "0.1.0"					# Version
 c_standard = "c11"				   # Specify the C standard (e.g., c99, c11, gnu11, etc.)
 compiler = "gcc"				   # Compiler
 global_cflags = "-Wall -Wextra"	   # Optimization flags

@@ -24,6 +24,7 @@ use toml::de::Error; // For handling deserialization errors
 // Main struct representing the entire configuration
 #[derive(Debug, Deserialize, Serialize)]
 pub struct BuildConfig {
+    pub version: String,
     pub build: BuildSettings,
     pub dependencies: Dependencies,
     pub subprojects: Vec<SubProject>,
