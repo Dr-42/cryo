@@ -28,6 +28,7 @@ pub struct BuildConfig {
     pub dependencies: Dependencies,
     pub subprojects: Vec<SubProject>,
     pub custom_build_rules: Option<Vec<CustomBuildRule>>,
+    pub overrides: Option<Vec<Override>>,
 }
 
 // General build configuration
@@ -39,7 +40,6 @@ pub struct BuildSettings {
     pub debug_flags: Option<String>,
     pub release_flags: Option<String>,
     pub parallel_jobs: Option<u32>,
-    pub output_dir: String,
 }
 
 // External dependencies (remote packages with versioning)
@@ -51,12 +51,26 @@ pub struct Dependencies {
 }
 
 #[derive(Debug, Deserialize, Serialize)]
+#[serde(rename_all = "kebab-case")]
+pub enum RemoteBuildMethod {
+    HeaderOnly,
+    Cmake,
+    Meson,
+    Cryo,
+    Custom,
+}
+
+#[derive(Debug, Deserialize, Serialize)]
 pub struct RemoteDependency {
     pub name: String,
-    pub version: String,
+    pub version: Option<String>,
     pub source: String,
-    pub include_dir: Option<String>,
-    pub lib_dir: Option<String>,
+    pub include_name: Option<String>,
+    pub include_dirs: Vec<String>,
+    pub build_method: Option<RemoteBuildMethod>,
+    pub build_command: Option<String>,
+    pub build_output: Option<String>,
+    pub imports: Option<Vec<String>>,
 }
 
 #[derive(Debug, Deserialize, Serialize)]
@@ -81,6 +95,16 @@ pub enum SubProjectType {
     HeaderOnly,
 }
 
+#[derive(Debug, Deserialize, Serialize)]
+#[serde(untagged)]
+pub enum SubProjectDependency {
+    Named(String), // For simple dependencies like "freetype"
+    Detailed {
+        name: String,
+        imports: Option<Vec<String>>,
+    },
+}
+
 // Subprojects (binaries, libraries, or header-only)
 #[derive(Debug, Deserialize, Serialize)]
 pub struct SubProject {
@@ -88,8 +112,20 @@ pub struct SubProject {
     pub r#type: SubProjectType, // Enum to specify the type (binary, library, header-only)
     pub src_dir: Option<String>,
     pub include_dirs: Option<Vec<String>>,
-    pub dependencies: Option<Vec<String>>,
+    pub dependencies: Option<Vec<SubProjectDependency>>,
     pub output_name: Option<String>,
+}
+
+// Overrides
+#[derive(Debug, Deserialize, Serialize)]
+pub struct Override {
+    pub name: String,
+    pub c_standard: Option<String>,
+    pub compiler: Option<String>,
+    pub cflags: Option<String>,
+    pub debug_flags: Option<String>,
+    pub release_flags: Option<String>,
+    pub parallel_jobs: Option<u32>,
 }
 
 // Enum for subproject type

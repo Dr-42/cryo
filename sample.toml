@@ -3,30 +3,53 @@
 # General build configuration
 [build]
 c_standard = "c11"				   # Specify the C standard (e.g., c99, c11, gnu11, etc.)
-compiler = "gcc"				   # Default compiler (can be overridden in subprojects)
+compiler = "gcc"				   # Compiler
 global_cflags = "-Wall -Wextra"	   # Optimization flags
 debug_flags = "-g"				   # Debug flags
 release_flags = "-O3"			   # Release flags
 parallel_jobs = 4				   # Number of parallel build jobs
-output_dir = "build/"			   # Directory where binaries/libraries will be placed
 
 # Dependencies from external sources (version management supported)
 [dependencies] # This section can be omitted if no dependencies
 # Library 1 fetched from a git repo (version is tagged)
 [[dependencies.remote]]
-name = "mylib"
+name = "mylib_v1"
 version = "v1.0.1"
 source = "https://github.com/example/mylib.git"
-include_dir = "mylib/include"   # Where the include files will be located
-lib_dir = "mylib/lib"           # Where library files will be located (can also be auto-detected)
+include_name = "mylib"   # The folder prefix for the source includes
+include_dirs = ["src/include"]
 
 # Library 2 with a different version fetched from git
 [[dependencies.remote]]
-name = "mylib"
+name = "mylib_v2"
 version = "v2.3.1"
 source = "https://github.com/example/mylib.git"
-include_dir = "mylib_v2/include"
-lib_dir = "mylib_v2/lib"
+include_name = "mylib_v2"
+include_dirs = ["src/include"]
+imports = ["mylibA", "mylibB"]
+
+[[dependencies.remote]]
+name = "glm"
+source = "https://github.com/example/glm.git"
+include_name = "glm"
+include_dirs = ["src/include"]
+build_method = "cmake"
+
+[[dependencies.remote]]
+name = "stb"
+source = "https://github.com/nothings/stb.git"
+include_name = "stb"
+include_dirs = ["./"]
+build_method = "header-only"
+
+[[dependencies.remote]]
+name = "heim_libs"
+source = "https://github.com/example/heim_libs.git"
+include_name = "heim"
+include_dirs = ["src/include"]
+build_method = "custom"
+build_command = "builder_cpp -b"
+build_output = ".bld_cpp/bin/heim_libs.so"
 
 [[dependencies.pkg_config]]
 name = "freetype"
@@ -43,7 +66,11 @@ name = "core"
 type = "library"								# Can be "binary", "library", or "header-only"
 src_dir = "src/core"							# Directory where source files are located
 include_dirs = ["src/core/include"]
-dependencies = ["mylib", "freetype", "glfw"]	# List of dependencies for this subproject
+dependencies = [
+	{ name = "mylib_v2", imports = ["mylibA", "mylibB"] },
+	"freetype",
+	"glfw"
+]	# List of dependencies for this subproject
 output_name = "libcore.a"						# Output file (static library in this case)
 
 # Header-only libraries
@@ -81,3 +108,8 @@ trigger_extensions = [".frag"]							# Only compile files with these extensions
 output_extension = ".spv"								# Output files will have this extension
 command = "glslc -o ${out} -fshader-stage=frag ${in}"   # How to compile shaders (using placeholders for input/output)
 rebuild_rule = "if-changed"
+
+[[overrides]]
+name = "core"
+cflags = "-Werror"
+parallel_jobs = 8
