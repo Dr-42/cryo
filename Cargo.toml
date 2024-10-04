@@ -3,8 +3,11 @@ name = "iceforge"
 version = "0.1.0"
 edition = "2021"
 authors = ["Dr-42"]
-about = "Cryo build tool for C/C++ projects"
 license = "GPL-3.0-or-later"
+description = "A simple build tool for building C and C++ applications"
+homepage = "https://github.com/Dr-42/iceforge"
+repository = "https://github.com/Dr-42/iceforge"
+keywords = ["build", "build-tool", "C++", "toml", "C"]
 
 [dependencies]
 clap = { version = "4.5.19", features = ["derive"] }
