@@ -23,8 +23,26 @@ use clap::{ArgGroup, Parser, Subcommand};
 #[derive(Parser, Debug)]
 #[command(author, about, version)]
 struct CryoCLI {
+    /// Build the project
+    #[arg(short)]
+    build: bool,
+    /// Run the project
+    #[arg(short)]
+    run: bool,
+    /// Clean the build directory
+    #[arg(short)]
+    clean: bool,
+
+    /// Generate compile_commands.json for the project
+    #[arg(long)]
+    gen_cc: bool,
+
+    /// Generate .vscode/c_cpp_properties.json for the project
+    #[arg(long)]
+    gen_vsc: bool,
+    /// Commands
     #[command(subcommand)]
-    command: Commands,
+    command: Option<Commands>,
 }
 
 #[derive(Subcommand, Debug)]
@@ -79,14 +97,27 @@ struct BuildOptions {
     generate_vscode_config: bool,
 }
 
-#[derive(Parser, Debug)]
+impl Default for BuildOptions {
+    fn default() -> Self {
+        Self {
+            release: false,
+            debug: true,
+            subproject: None,
+            parallel: None,
+            generate_compile_commands: false,
+            generate_vscode_config: false,
+        }
+    }
+}
+
+#[derive(Parser, Debug, Default)]
 struct RunOptions {
     /// Specify which binary to run if multiple exist
     #[arg(long)]
     binary: Option<String>,
 }
 
-#[derive(Parser, Debug)]
+#[derive(Parser, Debug, Default)]
 struct CleanOptions {
     /// Clean only a specific subproject
     #[arg(long)]
@@ -187,13 +218,29 @@ fn handle_init(opts: InitOptions) {
 pub fn parse() {
     let cli = CryoCLI::parse();
 
-    match cli.command {
-        Commands::Build(build_opts) => handle_build(build_opts),
-        Commands::Run(run_opts) => handle_run(run_opts),
-        Commands::Clean(clean_opts) => handle_clean(clean_opts),
-        Commands::Refresh => handle_refresh(),
-        Commands::Install => handle_install(),
-        Commands::Publish(publish_opts) => handle_publish(publish_opts),
-        Commands::Init(init_opts) => handle_init(init_opts),
+    if let Some(command) = cli.command {
+        match command {
+            Commands::Build(build_opts) => handle_build(build_opts),
+            Commands::Run(run_opts) => handle_run(run_opts),
+            Commands::Clean(clean_opts) => handle_clean(clean_opts),
+            Commands::Refresh => handle_refresh(),
+            Commands::Install => handle_install(),
+            Commands::Publish(publish_opts) => handle_publish(publish_opts),
+            Commands::Init(init_opts) => handle_init(init_opts),
+        }
+    }
+
+    if cli.clean {
+        handle_clean(CleanOptions::default());
+    }
+    if cli.build {
+        handle_build(BuildOptions {
+            generate_compile_commands: cli.gen_cc,
+            generate_vscode_config: cli.gen_vsc,
+            ..Default::default()
+        });
+    }
+    if cli.run {
+        handle_run(RunOptions::default());
     }
 }
