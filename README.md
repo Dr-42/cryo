@@ -34,12 +34,16 @@ A build tool for C projects.
       - `--parallel <N>` : Specify the number of parallel jobs for the build.
       - `--generate-compile-commands` : Generate a `compile_commands.json` file.
       - `--generate-vscode-config` : Generate `.vscode/c_cpp_properties.json`.
-      - `--inject-metadata` : Inject project metadata (name, version, asset path) into the build.
   
 - `cryo run [OPTIONS]`
     - **Description**: Runs the built binary or a specified binary if there are multiple binaries in the project.
     - **Options**:
       - `--binary <name>` : Specify which binary to run if multiple exist.
+
+- `cryo clean [OPTIONS]`
+    - **Description**: Cleans the build directory.
+    - **Options**:
+      - `--subproject <name>` : Clean only a specific subproject.
 
 - `cryo refresh`
     - **Description**: Refresh and update dependencies (like `cargo update`).
@@ -63,17 +67,23 @@ A build tool for C projects.
 - `cryo run --binary <name>`
     - **Description**: Runs a specified binary if there are multiple binaries in the project.
 
+### Clean Commands
+
+- `cryo clean`
+    - **Description**: Cleans the build directory.
+
+- `cryo clean --subproject <name>`
+    - **Description**: Clean a specific subproject by its name.
+
 ### Package and Versioning
 
 - `cryo install`
     - **Description**: Installs the current project or a specified remote Cryo repository for system-wide availability.
 
-- `cryo bump-version [OPTIONS]`
-    - **Description**: Bumps the version of the project and adds a Git tag for versioning.
+- `cryo publish [OPTIONS]`
+    - **Description**: Adds the current version in the config to the current commit as a git tag.
     - **Options**:
-      - `--major` : Bump the major version.
-      - `--minor` : Bump the minor version.
-      - `--patch` : Bump the patch version (default).
+      - `--remote <name>` : Adds the git tag to the specified remote repository.
 
 ### Project Initialization
 
@@ -92,44 +102,48 @@ A build tool for C projects.
 
 The following table summarizes the fields available in the Cryo build tool's TOML configuration file, specifying the possible values, whether the field is optional or required, and a brief description.
 
-| **Section**       | **Field**              | **Required** | **Type**           | **Possible Values**                                | **Description**                                                                                         |
-|-------------------|------------------------|--------------|--------------------|----------------------------------------------------|---------------------------------------------------------------------------------------------------------|
-| **[build]**       | `c_standard`           | No           | String             | `"c99"`, `"c11"`, `"gnu11"`, etc.                  | Specifies the C standard to use in the build.                                                            |
-|                   | `compiler`             | Yes          | String             | Any valid compiler name (e.g., `"gcc"`, `"clang"`) | Specifies the compiler to use for building the project.                                                  |
-|                   | `global_cflags`        | No           | String             | Any valid compiler flags                           | Specifies global compilation flags (e.g., `"-Wall -Wextra"`).                                             |
-|                   | `debug_flags`          | No           | String             | Any valid debug flags                              | Specifies flags to use in debug mode builds (e.g., `"-g"`).                                               |
-|                   | `release_flags`        | No           | String             | Any valid release flags                            | Specifies flags to use in release mode builds (e.g., `"-O3"`).                                            |
-|                   | `parallel_jobs`        | No           | Integer            | Any positive integer                               | Specifies the number of parallel jobs for building (e.g., `4`).                                           |
-| **[dependencies]**|                        |              |                    |                                                    | Section for external dependencies.                                                                       |
-| **[dependencies.remote]** | `name`         | Yes          | String             | Any valid string                                   | Specifies the name of the remote dependency.                                                             |
-|                   | `version`              | No           | String             | Any valid version tag (e.g., `"v1.0.1"`)           | Specifies the version of the dependency (optional).                                                      |
-|                   | `source`               | Yes          | URL String         | A valid Git URL                                    | The URL of the remote Git repository for the dependency.                                                  |
-|                   | `include_name`         | Yes          | String             | Any valid string                                   | Specifies the folder prefix for source includes from the dependency.                                      |
-|                   | `include_dirs`         | Yes          | Array of Strings    | A list of valid directory paths                    | Specifies the directories that need to be included in the build from the dependency.                      |
-|                   | `build_method`         | No           | String             | `"cmake"`, `"header-only"`, `"custom"`             | Specifies the build method for the remote dependency.                                                     |
-|                   | `build_command`        | No           | String             | Any valid shell command                            | Custom command to build the dependency if `build_method` is `"custom"`.                                   |
-|                   | `build_output`         | No           | String             | Any valid output path                              | Specifies the output binary or library if `build_method` is `"custom"`.                                   |
-| **[dependencies.pkg_config]** | `name`     | Yes          | String             | Any valid package name                             | Specifies the name of the dependency to be queried via `pkg-config`.                                       |
-|                   | `pkg_config_query`     | Yes          | String             | Any valid `pkg-config` query                       | Specifies the query to `pkg-config` (e.g., `"freetype2"`).                                                |
-| **[dependencies.manual]** | `name`         | Yes          | String             | Any valid string                                   | Specifies the name of the manually handled dependency.                                                    |
-|                   | `ldflags`              | Yes (manual) | String             | Any valid linker flags                             | Specifies manual linker flags for the dependency (e.g., `"-lglfw"`).                                      |
-| **[subprojects]**  | `name`                | Yes          | String             | Any valid string                                   | Specifies the name of the subproject.                                                                    |
-|                   | `type`                 | Yes          | String             | `"binary"`, `"library"`, `"header-only"`           | Specifies the type of subproject (binary, library, or header-only).                                       |
-|                   | `src_dir`              | Yes (except header-only) | String      | A valid directory path                             | Specifies the directory where the subproject source files are located.                                    |
-|                   | `include_dirs`         | Yes          | Array of Strings    | A list of valid directory paths                    | Specifies the directories that need to be included in the build for this subproject.                      |
-|                   | `dependencies`         | No           | Array of Strings    | List of subproject and remote dependency names     | Specifies the dependencies of the subproject (e.g., `["core", "mylib_v2"]`).                              |
-|                   | `output_name`          | Yes          | String             | Any valid file name                                | Specifies the output binary or library name for the subproject (e.g., `"game_executable"`).                |
-| **[custom_build_rules]** | `name`          | Yes          | String             | Any valid string                                   | Specifies the name of the custom build rule.                                                              |
-|                   | `description`          | No           | String             | Any valid string                                   | A brief description of the custom build rule.                                                             |
-|                   | `src_dir`              | Yes          | String             | A valid directory path                             | Specifies the directory where the source files for the custom build are located.                          |
-|                   | `output_dir`           | Yes          | String             | A valid directory path                             | Specifies the directory where the output files will be placed.                                            |
-|                   | `trigger_extensions`   | Yes          | Array of Strings    | List of valid file extensions                      | Specifies the file extensions that will trigger the custom build rule (e.g., `[".vert", ".frag"]`).        |
-|                   | `output_extension`     | Yes          | String             | A valid file extension                             | Specifies the extension for the output files (e.g., `".spv"`).                                            |
-|                   | `command`              | Yes          | String             | Any valid shell command                            | Specifies the shell command to run for the custom build (e.g., `glslc -o $out -fshader-stage=vert $in`).   |
-|                   | `rebuild_rule`         | Yes          | String             | `"if-changed"`, `"always"`, `"on-trigger"`         | Specifies the condition for rebuilding (only rebuild if changed, always rebuild, or trigger-based).        |
-| **[overrides]**    | `name`                | Yes          | String             | Any valid subproject name                          | Specifies the subproject name to which the override applies.                                              |
-|                   | `cflags`               | No           | String             | Any valid compilation flags                        | Specifies custom compiler flags for the overridden subproject.                                            |
-|                   | `parallel_jobs`        | No           | Integer            | Any positive integer                               | Specifies the number of parallel jobs for this overridden subproject.                                      |
+| **Section**                   | **Field**              | **Required**             | **Type**            | **Possible Values**                                | **Description**                                                                                                                            |
+|-------------------------------|------------------------|--------------------------|---------------------|----------------------------------------------------|--------------------------------------------------------------------------------------------------------------------------------------------|
+| **[build]**                   | `c_standard`           | No                       | String              | `"c99"`, `"c11"`, `"gnu11"`, etc.                  | Specifies the C standard to use in the build.                                                                                              |
+|                               | `compiler`             | Yes                      | String              | Any valid compiler name (e.g., `"gcc"`, `"clang"`) | Specifies the compiler to use for building the project.                                                                                    |
+|                               | `global_cflags`        | No                       | String              | Any valid compiler flags                           | Specifies global compilation flags (e.g., `"-Wall -Wextra"`).                                                                              |
+|                               | `debug_flags`          | No                       | String              | Any valid debug flags                              | Specifies flags to use in debug mode builds (e.g., `"-g"`).                                                                                |
+|                               | `release_flags`        | No                       | String              | Any valid release flags                            | Specifies flags to use in release mode builds (e.g., `"-O3"`).                                                                             |
+|                               | `parallel_jobs`        | No                       | Integer             | Any positive integer                               | Specifies the number of parallel jobs for building (e.g., `4`).                                                                            |
+| **[dependencies]**            |                        |                          |                     |                                                    | Section for external dependencies.                                                                                                         |
+| **[dependencies.remote]**     | `name`                 | Yes                      | String              | Any valid string                                   | Specifies the name of the remote dependency.                                                                                               |
+|                               | `version`              | No                       | String              | Any valid version tag (e.g., `"v1.0.1"`)           | Specifies the version of the dependency (optional).                                                                                        |
+|                               | `source`               | Yes                      | URL String          | A valid Git URL                                    | The URL of the remote Git repository for the dependency.                                                                                   |
+|                               | `include_name`         | Yes                      | String              | Any valid string                                   | Specifies the folder prefix for source includes from the dependency.                                                                       |
+|                               | `include_dirs`         | Yes                      | Array of Strings    | A list of valid directory paths                    | Specifies the directories that need to be included in the build from the dependency.                                                       |
+|                               | `build_method`         | No                       | String              | `"cmake"`, `"header-only"`, `"custom"`             | Specifies the build method for the remote dependency.                                                                                      |
+|                               | `build_command`        | No                       | String              | Any valid shell command                            | Custom command to build the dependency if `build_method` is `"custom"`.                                                                    |
+|                               | `build_output`         | No                       | String              | Any valid output path                              | Specifies the output binary or library if `build_method` is `"custom"`.                                                                    |
+| **[dependencies.pkg_config]** | `name`                 | Yes                      | String              | Any valid package name                             | Specifies the name of the dependency to be queried via `pkg-config`.                                                                       |
+|                               | `pkg_config_query`     | Yes                      | String              | Any valid `pkg-config` query                       | Specifies the query to `pkg-config` (e.g., `"freetype2"`).                                                                                 |
+| **[dependencies.manual]**     | `name`                 | Yes                      | String              | Any valid string                                   | Specifies the name of the manually handled dependency.                                                                                     |
+|                               | `ldflags`              | Yes (manual)             | String              | Any valid linker flags                             | Specifies manual linker flags for the dependency (e.g., `"-lglfw"`).                                                                       |
+| **[subprojects]**             | `name`                 | Yes                      | String              | Any valid string                                   | Specifies the name of the subproject.                                                                                                      |
+|                               | `type`                 | Yes                      | String              | `"binary"`, `"library"`, `"header-only"`           | Specifies the type of subproject (binary, library, or header-only).                                                                        |
+|                               | `src_dir`              | Yes (except header-only) | String              | A valid directory path                             | Specifies the directory where the subproject source files are located.                                                                     |
+|                               | `include_dirs`         | Yes                      | Array of Strings    | A list of valid directory paths                    | Specifies the directories that need to be included in the build for this subproject.                                                       |
+|                               | `dependencies`         | No                       | Array of Strings    | List of subproject and remote dependency names     | Specifies the dependencies of the subproject (e.g., `["core", "mylib_v2"]`).                                                               |
+|                               | `output_name`          | Yes                      | String              | Any valid file name                                | Specifies the output binary or library name for the subproject (e.g., `"game_executable"`).                                                |
+| **[custom_build_rules]**      | `name`                 | Yes                      | String              | Any valid string                                   | Specifies the name of the custom build rule.                                                                                               |
+|                               | `description`          | No                       | String              | Any valid string                                   | A brief description of the custom build rule.                                                                                              |
+|                               | `src_dir`              | Yes                      | String              | A valid directory path                             | Specifies the directory where the source files for the custom build are located.                                                           |
+|                               | `output_dir`           | Yes                      | String              | A valid directory path                             | Specifies the directory where the output files will be placed.                                                                             |
+|                               | `trigger_extensions`   | Yes                      | Array of Strings    | List of valid file extensions                      | Specifies the file extensions that will trigger the custom build rule (e.g., `[".vert", ".frag"]`).                                        |
+|                               | `output_extension`     | Yes                      | String              | A valid file extension                             | Specifies the extension for the output files (e.g., `".spv"`).                                                                             |
+|                               | `command`              | Yes                      | String              | Any valid shell command                            | Specifies the shell command to run for the custom build (e.g., `glslc -o $out -fshader-stage=vert $in`).                                   |
+|                               | `rebuild_rule`         | Yes                      | String              | `"if-changed"`, `"always"`, `"on-trigger"`         | Specifies the condition for rebuilding (only rebuild if changed, always rebuild, or trigger-based).                                        |
+| **[overrides]**               | `name`                 | Yes                      | String              | Any valid subproject name                          | Specifies the subproject name to which the override applies.                                                                               |
+|                               | `c_standard`           | No                       | String              | `"c99"`, `"c11"`, `"gnu11"`, etc.                  | Specifies the C standard to use in the overrie.                                                                                            |
+|                               | `compiler`             | Yes                      | String              | Any valid compiler name (e.g., `"gcc"`, `"clang"`) | Specifies the compiler to use for building the overriden subproject.                                                                       |
+|                               | `cflags`               | No                       | String              | Any valid compiler flags                           | Specifies overriden compilation flags (e.g., `"-Wall -Wextra"`).  Global flags will be discarded                                           |
+|                               | `debug_flags`          | No                       | String              | Any valid debug flags                              | Specifies flags to use in debug mode overriden subproject (e.g., `"-g"`).                                                                  |
+|                               | `release_flags`        | No                       | String              | Any valid release flags                            | Specifies flags to use in release mode overriden subproject (e.g., `"-O3"`).                                                               |
+|                               | `parallel_jobs`        | No                       | Integer             | Any positive integer                               | Specifies the number of parallel jobs for building (e.g., `4`).                                                                            |
 
 ---
 
