@@ -114,7 +114,6 @@ pub struct SubProject {
     pub src_dir: Option<String>,
     pub include_dirs: Option<Vec<String>>,
     pub dependencies: Option<Vec<SubProjectDependency>>,
-    pub output_name: Option<String>,
 }
 
 // Overrides
@@ -151,6 +150,17 @@ pub struct CustomBuildRule {
     pub rebuild_rule: CustomBuildRuleType,
 }
 
+#[derive(Debug)]
+pub enum ConfigError {}
+
+impl std::fmt::Display for ConfigError {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        write!(f, "ConfigError")
+    }
+}
+
+impl std::error::Error for ConfigError {}
+
 impl BuildConfig {
     pub fn load_config(file_path: &str) -> Result<Self, Error> {
         // Read the TOML file
@@ -158,5 +168,38 @@ impl BuildConfig {
         // Parse the TOML content into the BuildConfig struct
         let config: Self = toml::from_str(&content)?;
         Ok(config)
+    }
+
+    fn check_compiler_details(&self) {
+        let compiler = self.build.compiler.as_str();
+        let c_standard = self.build.c_standard.as_str();
+    }
+
+    pub fn verify_config(&self) -> Result<(), ConfigError> {
+        // NOTE: Build settings
+        // TODO: Verify compiler is in path
+        // Verify that c_standard is in the list
+        self.check_compiler_details();
+        // NOTE: Dependencies
+        // TODO: Verify duplicate dependencies are not present
+        // Verify no two dependencies share the same name or include_name
+        // Verify that build_command, build_output are present only in custom
+        // build_method
+        // Verify that pkg-config dependency exists
+        //
+        // NOTE: Subprojects
+        // TODO: Verify duplicate subproject names are not present
+        // Verify that subproject dependencies exist
+        // Verify that there are no circular dependencies
+        // Verify that src_dir and include_dirs exist (except in header_only)
+        //
+        // NOTE: Overrriders
+        // TODO: Verify duplicate override names are not present
+        // Verify that override names match subproject names
+        //
+        // NOTE: Custom build rules
+        // TODO: Verify duplicate custom build rule names are not present
+        // Verify that src_dir and output_dir exist
+        todo!()
     }
 }

@@ -145,6 +145,12 @@ struct InitOptions {
 fn handle_build(opts: BuildOptions) {
     // Handle the build process with the options provided
     println!("Building project...");
+    if opts.generate_compile_commands {
+        println!("Generating compile_commands.json");
+    }
+    if opts.generate_vscode_config {
+        println!("Generating .vscode/c_cpp_properties.json");
+    }
     if opts.release {
         println!("Building in release mode");
     }
@@ -156,12 +162,6 @@ fn handle_build(opts: BuildOptions) {
     }
     if let Some(parallel) = opts.parallel {
         println!("Using {} parallel jobs", parallel);
-    }
-    if opts.generate_compile_commands {
-        println!("Generating compile_commands.json");
-    }
-    if opts.generate_vscode_config {
-        println!("Generating .vscode/c_cpp_properties.json");
     }
 }
 

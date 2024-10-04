@@ -19,14 +19,17 @@
 
 pub mod build_config;
 pub mod cli;
+pub mod logger;
 
-fn main() {
-    let _config = match build_config::BuildConfig::load_config("sample.toml") {
+fn main() -> Result<(), Box<dyn std::error::Error>> {
+    let config = match build_config::BuildConfig::load_config("sample.toml") {
         Ok(config) => config,
         Err(e) => {
             eprintln!("Error parsing config: {}", e);
             std::process::exit(1);
         }
     };
+    config.verify_config()?;
     cli::parse();
+    Ok(())
 }
