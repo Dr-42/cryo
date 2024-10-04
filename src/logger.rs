@@ -40,6 +40,9 @@ pub fn log(level: LogLevel, msg: &str) {
 
 #[macro_export]
 macro_rules! logd {
+    () => {
+        println!();
+    };
     ($msg:expr) => {
         $crate::logger::log($crate::logger::LogLevel::Debug, $msg)
     };
@@ -50,6 +53,9 @@ macro_rules! logd {
 
 #[macro_export]
 macro_rules! logv {
+    () => {
+        println!();
+    };
     ($msg:expr) => {
         $crate::logger::log($crate::logger::LogLevel::Verbose, $msg)
     };
@@ -60,6 +66,9 @@ macro_rules! logv {
 
 #[macro_export]
 macro_rules! logi {
+    () => {
+        println!();
+    };
     ($msg:expr) => {
         $crate::logger::log($crate::logger::LogLevel::Info, $msg)
     };
@@ -70,6 +79,9 @@ macro_rules! logi {
 
 #[macro_export]
 macro_rules! logw {
+    () => {
+        eprintln!();
+    };
     ($msg:expr) => {
         $crate::logger::log($crate::logger::LogLevel::Warning, $msg)
     };
@@ -80,6 +92,9 @@ macro_rules! logw {
 
 #[macro_export]
 macro_rules! loge {
+    () => {
+        eprintln!();
+    };
     ($msg:expr) => {
         $crate::logger::log($crate::logger::LogLevel::Error, $msg)
     };

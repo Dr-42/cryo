@@ -17,9 +17,13 @@
 * along with iceforge.  If not, see <https://www.gnu.org/licenses/>.
 */
 
+use codespan_reporting::{
+    diagnostic::{Diagnostic, Label},
+    files::SimpleFiles,
+};
 use serde::{Deserialize, Serialize};
-use std::fs;
-use toml::de::Error; // For handling deserialization errors
+use std::{fs, ops::Range};
+use toml::de::Error as TomlError; // For handling deserialization errors
 
 // Main struct representing the entire configuration
 #[derive(Debug, Deserialize, Serialize)]
@@ -151,31 +155,52 @@ pub struct CustomBuildRule {
 }
 
 #[derive(Debug)]
-pub enum ConfigError {}
-
-impl std::fmt::Display for ConfigError {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        write!(f, "ConfigError")
-    }
+pub struct Error<'a> {
+    pub error_type: ErrorType,
+    pub message: String,
+    pub span: Option<Range<usize>>,
+    pub diagnostic: Option<Diagnostic<usize>>,
+    pub files: SimpleFiles<&'a str, String>,
 }
 
-impl std::error::Error for ConfigError {}
+#[derive(Debug)]
+pub enum ErrorType {
+    TomlParseError,
+}
 
 impl BuildConfig {
-    pub fn load_config(file_path: &str) -> Result<Self, Error> {
+    pub fn load_config(file_path: &str) -> Result<Self, Box<Error>> {
         // Read the TOML file
         let content = fs::read_to_string(file_path).expect("Failed to read the config file");
+        let mut files = SimpleFiles::new();
+        let file_id = files.add(file_path, content.clone());
         // Parse the TOML content into the BuildConfig struct
-        let config: Self = toml::from_str(&content)?;
-        Ok(config)
+        let config: Result<Self, TomlError> = toml::from_str(&content);
+        match config {
+            Err(e) => {
+                let diag = Diagnostic::error()
+                    .with_message("Error parsing config")
+                    .with_labels(vec![
+                        Label::primary(file_id, e.span().unwrap()).with_message(e.message())
+                    ]);
+                Err(Box::new(Error {
+                    error_type: ErrorType::TomlParseError,
+                    message: e.to_string(),
+                    span: e.span(),
+                    diagnostic: Some(diag),
+                    files,
+                }))
+            }
+            Ok(config) => Ok(config),
+        }
     }
 
     fn check_compiler_details(&self) {
-        let compiler = self.build.compiler.as_str();
-        let c_standard = self.build.c_standard.as_str();
+        let _compiler = self.build.compiler.as_str();
+        let _c_standard = self.build.c_standard.as_str();
     }
 
-    pub fn verify_config(&self) -> Result<(), ConfigError> {
+    pub fn verify_config(&self) -> Result<(), Box<Error>> {
         // NOTE: Build settings
         // TODO: Verify compiler is in path
         // Verify that c_standard is in the list

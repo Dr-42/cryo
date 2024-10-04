@@ -16,6 +16,10 @@
 * You should have received a copy of the GNU General Public License
 * along with iceforge.  If not, see <https://www.gnu.org/licenses/>.
 */
+use codespan_reporting::term::{
+    self,
+    termcolor::{ColorChoice, StandardStream},
+};
 
 pub mod build_config;
 pub mod cli;
@@ -25,11 +29,15 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     let config = match build_config::BuildConfig::load_config("sample.toml") {
         Ok(config) => config,
         Err(e) => {
-            eprintln!("Error parsing config: {}", e);
+            let diag = e.diagnostic.unwrap();
+            let writer = StandardStream::stderr(ColorChoice::Always);
+            let config = codespan_reporting::term::Config::default();
+
+            term::emit(&mut writer.lock(), &config, &e.files, &diag)?;
             std::process::exit(1);
         }
     };
-    config.verify_config()?;
+    let _ = config.verify_config();
     cli::parse();
     Ok(())
 }

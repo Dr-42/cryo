@@ -72,7 +72,6 @@ dependencies = [
 	"freetype",
 	"glfw"
 ]	# List of dependencies for this subproject
-output_name = "libcore.a"						# Output file (static library in this case)
 
 # Header-only libraries
 [[subprojects]]
@@ -86,7 +85,6 @@ type = "binary"
 src_dir = "src/game"
 include_dirs = ["src/game/include", "src/core/include"]
 dependencies = ["core", "mylib_v2"]					# This binary depends on core (local library) and mylib_v2 (remote)
-output_name = "game_executable"
 
 # Custom build rules for assets (like Vulkan shaders or any custom source)
 # These rules can specify specific source files, output locations, and triggers (e.g., change detection)

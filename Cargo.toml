@@ -11,6 +11,8 @@ keywords = ["build", "build-tool", "C++", "toml", "C"]
 
 [dependencies]
 clap = { version = "4.5.19", features = ["derive"] }
+codespan = "0.11.1"
+codespan-reporting = "0.11.1"
 colored = "2.1.0"
 serde = { version = "1.0.210", features = ["derive"]}
 toml = "0.8.19"
