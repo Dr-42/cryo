@@ -1,28 +1,28 @@
 /*
 * Copyright (c) 2024, Dr. Spandan Roy
 *
-* This file is part of cryo.
+* This file is part of iceforge.
 *
-* cryo is free software: you can redistribute it and/or modify
+* iceforge is free software: you can redistribute it and/or modify
 * it under the terms of the GNU General Public License as published by
 * the Free Software Foundation, either version 3 of the License, or
 * (at your option) any later version.
 *
-* cryo is distributed in the hope that it will be useful,
+* iceforge is distributed in the hope that it will be useful,
 * but WITHOUT ANY WARRANTY; without even the implied warranty of
 * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
 * GNU General Public License for more details.
 *
 * You should have received a copy of the GNU General Public License
-* along with cryo.  If not, see <https://www.gnu.org/licenses/>.
+* along with iceforge.  If not, see <https://www.gnu.org/licenses/>.
 */
 
 use clap::{ArgGroup, Parser, Subcommand};
 
-/// Cryo Build Tool
+/// Iceforge Build Tool
 #[derive(Parser, Debug)]
 #[command(author, about, version)]
-struct CryoCLI {
+struct IceforgeCLI {
     /// Build the project
     #[arg(short)]
     build: bool,
@@ -59,13 +59,13 @@ enum Commands {
     /// Refresh and update dependencies
     Refresh,
 
-    /// Install the current project or a remote cryo repo for system-wide availability
+    /// Install the current project or a remote iceforge repo for system-wide availability
     Install,
 
     /// Publish the project by tagging the current version in the config
     Publish(PublishOptions),
 
-    /// Initialize a new Cryo project
+    /// Initialize a new iceforge project
     Init(InitOptions),
 }
 
@@ -216,7 +216,7 @@ fn handle_init(opts: InitOptions) {
 }
 
 pub fn parse() {
-    let cli = CryoCLI::parse();
+    let cli = IceforgeCLI::parse();
 
     if let Some(command) = cli.command {
         match command {

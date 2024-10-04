@@ -1,9 +1,10 @@
 [package]
-name = "cryo"
+name = "iceforge"
 version = "0.1.0"
 edition = "2021"
 authors = ["Dr-42"]
 about = "Cryo build tool for C/C++ projects"
+license = "GPL-3.0-or-later"
 
 [dependencies]
 clap = { version = "4.5.19", features = ["derive"] }

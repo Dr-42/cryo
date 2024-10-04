@@ -1,4 +1,4 @@
-# Cryo
+# Iceforge
 
 A build tool for C projects.
 
@@ -25,7 +25,7 @@ A build tool for C projects.
 
 ### General Commands
 
-- `cryo build [OPTIONS]`
+- `iceforge build [OPTIONS]`
     - **Description**: Builds the entire project or a specified subproject.
     - **Options**:
       - `--release` : Build in release mode.
@@ -35,60 +35,60 @@ A build tool for C projects.
       - `--generate-compile-commands` : Generate a `compile_commands.json` file.
       - `--generate-vscode-config` : Generate `.vscode/c_cpp_properties.json`.
   
-- `cryo run [OPTIONS]`
+- `iceforge run [OPTIONS]`
     - **Description**: Runs the built binary or a specified binary if there are multiple binaries in the project.
     - **Options**:
       - `--binary <name>` : Specify which binary to run if multiple exist.
 
-- `cryo clean [OPTIONS]`
+- `iceforge clean [OPTIONS]`
     - **Description**: Cleans the build directory.
     - **Options**:
       - `--subproject <name>` : Clean only a specific subproject.
 
-- `cryo refresh`
+- `iceforge refresh`
     - **Description**: Refresh and update dependencies (like `cargo update`).
     
 ### Build Commands
 
-- `cryo build --release`
+- `iceforge build --release`
     - **Description**: Builds the project in release mode.
   
-- `cryo build --debug`
+- `iceforge build --debug`
     - **Description**: Builds the project in debug mode (default).
   
-- `cryo build --subproject <name>`
+- `iceforge build --subproject <name>`
     - **Description**: Build a specific subproject by its name.
 
 ### Run Commands
 
-- `cryo run`
+- `iceforge run`
     - **Description**: Runs the default or only binary.
   
-- `cryo run --binary <name>`
+- `iceforge run --binary <name>`
     - **Description**: Runs a specified binary if there are multiple binaries in the project.
 
 ### Clean Commands
 
-- `cryo clean`
+- `iceforge clean`
     - **Description**: Cleans the build directory.
 
-- `cryo clean --subproject <name>`
+- `iceforge clean --subproject <name>`
     - **Description**: Clean a specific subproject by its name.
 
 ### Package and Versioning
 
-- `cryo install`
-    - **Description**: Installs the current project or a specified remote Cryo repository for system-wide availability.
+- `iceforge install`
+    - **Description**: Installs the current project or a specified remote iceforge repository for system-wide availability.
 
-- `cryo publish [OPTIONS]`
+- `iceforge publish [OPTIONS]`
     - **Description**: Adds the current version in the config to the current commit as a git tag.
     - **Options**:
       - `--remote <name>` : Adds the git tag to the specified remote repository.
 
 ### Project Initialization
 
-- `cryo init [OPTIONS]`
-    - **Description**: Initializes a new Cryo project in the current directory or a new directory.
+- `iceforge init [OPTIONS]`
+    - **Description**: Initializes a new iceforge project in the current directory or a new directory.
     - **Options**:
       - `--name <name>` : Specify the project name.
       - `--dir <path>` : Create a new directory for the project and initialize it there.
@@ -98,9 +98,9 @@ A build tool for C projects.
 ## TOML Configuration
 
 ### Specification
-# Cryo Build Tool - TOML Configuration Table
+# Iceforge Build Tool - TOML Configuration Table
 
-The following table summarizes the fields available in the Cryo build tool's TOML configuration file, specifying the possible values, whether the field is optional or required, and a brief description.
+The following table summarizes the fields available in the iceforge build tool's TOML configuration file, specifying the possible values, whether the field is optional or required, and a brief description.
 
 | **Section**                   | **Field**              | **Required**             | **Type**            | **Possible Values**                                | **Description**                                                                                                                            |
 |-------------------------------|------------------------|--------------------------|---------------------|----------------------------------------------------|--------------------------------------------------------------------------------------------------------------------------------------------|
