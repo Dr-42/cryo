@@ -16,9 +16,13 @@
 * You should have received a copy of the GNU General Public License
 * along with iceforge.  If not, see <https://www.gnu.org/licenses/>.
 */
-use codespan_reporting::term::{
-    self,
-    termcolor::{ColorChoice, StandardStream},
+use codespan_reporting::{
+    diagnostic::{Diagnostic, Label},
+    files::SimpleFiles,
+    term::{
+        self,
+        termcolor::{ColorChoice, StandardStream},
+    },
 };
 
 pub mod build_config;
@@ -26,18 +30,39 @@ pub mod cli;
 pub mod logger;
 
 fn main() -> Result<(), Box<dyn std::error::Error>> {
+    let config_path = "sample.toml";
+    let config_contents = std::fs::read_to_string(config_path)?;
+    let mut files = SimpleFiles::new();
+    let file_id = files.add(config_path, config_contents);
     let config = match build_config::BuildConfig::load_config("sample.toml") {
         Ok(config) => config,
         Err(e) => {
-            let diag = e.diagnostic.unwrap();
             let writer = StandardStream::stderr(ColorChoice::Always);
             let config = codespan_reporting::term::Config::default();
 
-            term::emit(&mut writer.lock(), &config, &e.files, &diag)?;
+            let diag = Diagnostic::error()
+                .with_message("Error parsing config")
+                .with_labels(vec![
+                    Label::primary(file_id, e.span.unwrap()).with_message(e.message)
+                ]);
+
+            term::emit(&mut writer.lock(), &config, &files, &diag)?;
             std::process::exit(1);
         }
     };
-    let _ = config.verify_config();
+    if let Err(e) = config.verify_config() {
+        let writer = StandardStream::stderr(ColorChoice::Always);
+        let config = codespan_reporting::term::Config::default();
+
+        let diag = Diagnostic::error()
+            .with_message("Error parsing config")
+            .with_labels(vec![
+                Label::primary(file_id, e.span.unwrap()).with_message(e.message)
+            ]);
+
+        term::emit(&mut writer.lock(), &config, &files, &diag)?;
+        std::process::exit(1);
+    }
     cli::parse();
     Ok(())
 }

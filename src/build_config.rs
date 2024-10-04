@@ -17,13 +17,9 @@
 * along with iceforge.  If not, see <https://www.gnu.org/licenses/>.
 */
 
-use codespan_reporting::{
-    diagnostic::{Diagnostic, Label},
-    files::SimpleFiles,
-};
 use serde::{Deserialize, Serialize};
-use std::{fs, ops::Range};
-use toml::de::Error as TomlError; // For handling deserialization errors
+use std::{fs, ops::Range, process::Command};
+use toml::{de::Error as TomlError, Spanned}; // For handling deserialization errors
 
 // Main struct representing the entire configuration
 #[derive(Debug, Deserialize, Serialize)]
@@ -39,8 +35,8 @@ pub struct BuildConfig {
 #[derive(Debug, Deserialize, Serialize)]
 pub struct BuildSettings {
     pub version: String,
-    pub c_standard: String,
-    pub compiler: String,
+    pub c_standard: Spanned<String>,
+    pub compiler: Spanned<String>,
     pub global_cflags: Option<String>,
     pub debug_flags: Option<String>,
     pub release_flags: Option<String>,
@@ -155,56 +151,89 @@ pub struct CustomBuildRule {
 }
 
 #[derive(Debug)]
-pub struct Error<'a> {
+pub struct Error {
     pub error_type: ErrorType,
     pub message: String,
     pub span: Option<Range<usize>>,
-    pub diagnostic: Option<Diagnostic<usize>>,
-    pub files: SimpleFiles<&'a str, String>,
 }
 
 #[derive(Debug)]
 pub enum ErrorType {
     TomlParseError,
+    IncorrectCompiler,
+    UnsupportedCStandard,
 }
 
 impl BuildConfig {
-    pub fn load_config(file_path: &str) -> Result<Self, Box<Error>> {
+    pub fn load_config(file_path: &str) -> Result<Self, Error> {
         // Read the TOML file
         let content = fs::read_to_string(file_path).expect("Failed to read the config file");
-        let mut files = SimpleFiles::new();
-        let file_id = files.add(file_path, content.clone());
         // Parse the TOML content into the BuildConfig struct
         let config: Result<Self, TomlError> = toml::from_str(&content);
         match config {
-            Err(e) => {
-                let diag = Diagnostic::error()
-                    .with_message("Error parsing config")
-                    .with_labels(vec![
-                        Label::primary(file_id, e.span().unwrap()).with_message(e.message())
-                    ]);
-                Err(Box::new(Error {
-                    error_type: ErrorType::TomlParseError,
-                    message: e.to_string(),
-                    span: e.span(),
-                    diagnostic: Some(diag),
-                    files,
-                }))
-            }
+            Err(e) => Err(Error {
+                error_type: ErrorType::TomlParseError,
+                message: e.to_string(),
+                span: e.span(),
+            }),
             Ok(config) => Ok(config),
         }
     }
 
-    fn check_compiler_details(&self) {
-        let _compiler = self.build.compiler.as_str();
-        let _c_standard = self.build.c_standard.as_str();
+    fn check_compiler_details(&self) -> Result<(), Error> {
+        let compiler = self.build.compiler.clone();
+        let compiler_span = compiler.span();
+        let compiler_name = compiler.into_inner();
+
+        // Check if the compiler is in the path
+        let compiler_path = Command::new("sh")
+            .arg("-c")
+            .arg(format!("which {}", compiler_name))
+            .output();
+        let compiler_path = if let Ok(compiler_path) = compiler_path {
+            let output = String::from_utf8(compiler_path.stdout).unwrap();
+            let output = output.split_whitespace().next();
+            if let Some(output) = output {
+                output.to_string()
+            } else {
+                return Err(Error {
+                    error_type: ErrorType::IncorrectCompiler,
+                    message: "Compiler not in path".to_string(),
+                    span: Some(compiler_span),
+                });
+            }
+        } else {
+            return Err(Error {
+                error_type: ErrorType::IncorrectCompiler,
+                message: "Compiler not in path".to_string(),
+                span: Some(compiler_span),
+            });
+        };
+        let c_standard = self.build.c_standard.clone();
+        let c_standard_span = c_standard.span();
+        let c_standard = c_standard.into_inner();
+        let output = Command::new(compiler_path)
+            .arg(format!("-std={}", c_standard))
+            .arg("-o") // Dummy output
+            .arg("/dev/null") // Just discard any output file
+            .arg("-x") // Specify language C
+            .arg("c") // Use C language
+            .arg("-c") // Compile only, don't link
+            .arg("-") // Read from stdin
+            .output();
+
+        if output.is_err() {
+            return Err(Error {
+                error_type: ErrorType::UnsupportedCStandard,
+                message: "Unsupported C standard".to_string(),
+                span: Some(c_standard_span),
+            });
+        }
+        Ok(())
     }
 
-    pub fn verify_config(&self) -> Result<(), Box<Error>> {
-        // NOTE: Build settings
-        // TODO: Verify compiler is in path
-        // Verify that c_standard is in the list
-        self.check_compiler_details();
+    pub fn verify_config(&self) -> Result<(), Error> {
+        self.check_compiler_details()?;
         // NOTE: Dependencies
         // TODO: Verify duplicate dependencies are not present
         // Verify no two dependencies share the same name or include_name
