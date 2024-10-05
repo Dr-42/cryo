@@ -4,7 +4,7 @@
 [build]
 version = "0.1.0"					# Version
 c_standard = "c11"				   # Specify the C standard (e.g., c99, c11, gnu11, etc.)
-compiler = "gcc"				   # Compiler
+compiler = "clang"				   # Compiler
 global_cflags = "-Wall -Wextra"	   # Optimization flags
 debug_flags = "-g"				   # Debug flags
 release_flags = "-O3"			   # Release flags

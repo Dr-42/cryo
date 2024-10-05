@@ -99,7 +99,7 @@ pub enum SubProjectType {
 #[derive(Debug, Deserialize, Serialize)]
 #[serde(untagged)]
 pub enum SubProjectDependency {
-    Named(String), // For simple dependencies like "freetype"
+    Named(String),
     Detailed {
         name: String,
         imports: Option<Vec<String>>,
@@ -110,7 +110,7 @@ pub enum SubProjectDependency {
 #[derive(Debug, Deserialize, Serialize)]
 pub struct SubProject {
     pub name: String,
-    pub r#type: SubProjectType, // Enum to specify the type (binary, library, header-only)
+    pub r#type: SubProjectType,
     pub src_dir: Option<String>,
     pub include_dirs: Option<Vec<String>>,
     pub dependencies: Option<Vec<SubProjectDependency>>,
@@ -130,7 +130,7 @@ pub struct Override {
 
 // Enum for subproject type
 #[derive(Debug, Deserialize, Serialize)]
-#[serde(rename_all = "kebab-case")] // Matches the TOML string "binary", "library", "header-only"
+#[serde(rename_all = "kebab-case")]
 pub enum CustomBuildRuleType {
     IfChanged,
     Always,
@@ -164,24 +164,9 @@ pub enum ErrorType {
     UnsupportedCStandard,
 }
 
-impl BuildConfig {
-    pub fn load_config(file_path: &str) -> Result<Self, Error> {
-        // Read the TOML file
-        let content = fs::read_to_string(file_path).expect("Failed to read the config file");
-        // Parse the TOML content into the BuildConfig struct
-        let config: Result<Self, TomlError> = toml::from_str(&content);
-        match config {
-            Err(e) => Err(Error {
-                error_type: ErrorType::TomlParseError,
-                message: e.to_string(),
-                span: e.span(),
-            }),
-            Ok(config) => Ok(config),
-        }
-    }
-
+impl BuildSettings {
     fn check_compiler_details(&self) -> Result<(), Error> {
-        let compiler = self.build.compiler.clone();
+        let compiler = self.compiler.clone();
         let compiler_span = compiler.span();
         let compiler_name = compiler.into_inner();
 
@@ -209,7 +194,7 @@ impl BuildConfig {
                 span: Some(compiler_span),
             });
         };
-        let c_standard = self.build.c_standard.clone();
+        let c_standard = self.c_standard.clone();
         let c_standard_span = c_standard.span();
         let c_standard = c_standard.into_inner();
         let output = Command::new(compiler_path)
@@ -222,7 +207,7 @@ impl BuildConfig {
             .arg("-") // Read from stdin
             .output();
 
-        if output.is_err() {
+        if output.is_err() || output.unwrap().status.code() != Some(0) {
             return Err(Error {
                 error_type: ErrorType::UnsupportedCStandard,
                 message: "Unsupported C standard".to_string(),
@@ -231,9 +216,32 @@ impl BuildConfig {
         }
         Ok(())
     }
+}
+
+impl BuildConfig {
+    pub fn load_config(file_path: &str) -> Result<Self, Error> {
+        // Read the TOML file
+        let content = fs::read_to_string(file_path).expect("Failed to read the config file");
+        // Parse the TOML content into the BuildConfig struct
+        let config: Result<Self, TomlError> = toml::from_str(&content);
+        match config {
+            Err(e) => Err(Error {
+                error_type: ErrorType::TomlParseError,
+                message: e.to_string(),
+                span: e.span(),
+            }),
+            Ok(config) => Ok(config),
+        }
+    }
+
+    fn check_dependencies(&self) -> Result<(), Error> {
+        // TODO: Implement
+        Ok(())
+    }
 
     pub fn verify_config(&self) -> Result<(), Error> {
-        self.check_compiler_details()?;
+        self.build.check_compiler_details()?;
+        self.check_dependencies()?;
         // NOTE: Dependencies
         // TODO: Verify duplicate dependencies are not present
         // Verify no two dependencies share the same name or include_name
