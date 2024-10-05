@@ -16,24 +16,25 @@
 * You should have received a copy of the GNU General Public License
 * along with iceforge.  If not, see <https://www.gnu.org/licenses/>.
 */
+use serde::{Deserialize, Serialize};
 
-pub mod build_config;
-pub mod cli;
-pub mod logger;
+#[derive(Debug, Deserialize, Serialize, Clone)]
+#[serde(rename_all = "kebab-case")]
+pub enum CustomBuildRuleType {
+    IfChanged,
+    Always,
+    OnTrigger,
+}
 
-fn main() -> Result<(), Box<dyn std::error::Error>> {
-    let config_path = "sample.toml";
-    let config = match build_config::BuildConfig::load_config(config_path) {
-        Ok(config) => config,
-        Err(e) => {
-            e.emit_config_error(config_path);
-            std::process::exit(1);
-        }
-    };
-    if let Err(e) = config.verify_config() {
-        e.emit_config_error(config_path);
-        std::process::exit(1);
-    }
-    cli::parse();
-    Ok(())
+// Custom build rules for assets like Vulkan shaders
+#[derive(Debug, Deserialize, Serialize, Clone)]
+pub struct CustomBuildRule {
+    pub name: String,
+    pub description: Option<String>,
+    pub src_dir: String,
+    pub output_dir: String,
+    pub trigger_extensions: Vec<String>,
+    pub output_extension: String,
+    pub command: String,
+    pub rebuild_rule: CustomBuildRuleType,
 }

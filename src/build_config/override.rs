@@ -16,24 +16,15 @@
 * You should have received a copy of the GNU General Public License
 * along with iceforge.  If not, see <https://www.gnu.org/licenses/>.
 */
-
-pub mod build_config;
-pub mod cli;
-pub mod logger;
-
-fn main() -> Result<(), Box<dyn std::error::Error>> {
-    let config_path = "sample.toml";
-    let config = match build_config::BuildConfig::load_config(config_path) {
-        Ok(config) => config,
-        Err(e) => {
-            e.emit_config_error(config_path);
-            std::process::exit(1);
-        }
-    };
-    if let Err(e) = config.verify_config() {
-        e.emit_config_error(config_path);
-        std::process::exit(1);
-    }
-    cli::parse();
-    Ok(())
+use serde::{Deserialize, Serialize};
+// Overrides
+#[derive(Debug, Deserialize, Serialize, Clone)]
+pub struct Override {
+    pub name: String,
+    pub c_standard: Option<String>,
+    pub compiler: Option<String>,
+    pub cflags: Option<String>,
+    pub debug_flags: Option<String>,
+    pub release_flags: Option<String>,
+    pub parallel_jobs: Option<u32>,
 }
