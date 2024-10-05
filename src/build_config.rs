@@ -18,11 +18,11 @@
 */
 
 use serde::{Deserialize, Serialize};
-use std::{fs, ops::Range, process::Command};
+use std::{collections::HashSet, fs, ops::Range, process::Command};
 use toml::{de::Error as TomlError, Spanned}; // For handling deserialization errors
 
 // Main struct representing the entire configuration
-#[derive(Debug, Deserialize, Serialize)]
+#[derive(Debug, Deserialize, Serialize, Clone)]
 pub struct BuildConfig {
     pub build: BuildSettings,
     pub dependencies: Dependencies,
@@ -32,7 +32,7 @@ pub struct BuildConfig {
 }
 
 // General build configuration
-#[derive(Debug, Deserialize, Serialize)]
+#[derive(Debug, Deserialize, Serialize, Clone)]
 pub struct BuildSettings {
     pub version: String,
     pub c_standard: Spanned<String>,
@@ -44,14 +44,22 @@ pub struct BuildSettings {
 }
 
 // External dependencies (remote packages with versioning)
-#[derive(Debug, Deserialize, Serialize)]
+#[derive(Debug, Deserialize, Serialize, Clone)]
 pub struct Dependencies {
-    pub remote: Vec<RemoteDependency>,
-    pub pkg_config: Vec<PkgConfigDependency>,
-    pub manual: Vec<ManualDependency>,
+    pub remote: Vec<Spanned<RemoteDependency>>,
+    pub pkg_config: Vec<Spanned<PkgConfigDependency>>,
+    pub manual: Vec<Spanned<ManualDependency>>,
 }
 
-#[derive(Debug, Deserialize, Serialize)]
+#[allow(clippy::large_enum_variant)]
+#[derive(Clone)]
+pub enum Dependency {
+    Remote(Spanned<RemoteDependency>),
+    PkgConfig(Spanned<PkgConfigDependency>),
+    Manual(Spanned<ManualDependency>),
+}
+
+#[derive(Debug, Deserialize, Serialize, Clone, Eq, PartialEq)]
 #[serde(rename_all = "kebab-case")]
 pub enum RemoteBuildMethod {
     HeaderOnly,
@@ -61,34 +69,34 @@ pub enum RemoteBuildMethod {
     Custom,
 }
 
-#[derive(Debug, Deserialize, Serialize)]
+#[derive(Debug, Deserialize, Serialize, Clone)]
 pub struct RemoteDependency {
-    pub name: String,
-    pub version: Option<String>,
-    pub source: String,
-    pub include_name: Option<String>,
+    pub name: Spanned<String>,
+    pub version: Option<Spanned<String>>,
+    pub source: Spanned<String>,
+    pub include_name: Option<Spanned<String>>,
     pub include_dirs: Vec<String>,
     pub build_method: Option<RemoteBuildMethod>,
-    pub build_command: Option<String>,
-    pub build_output: Option<String>,
+    pub build_command: Option<Spanned<String>>,
+    pub build_output: Option<Spanned<String>>,
     pub imports: Option<Vec<String>>,
 }
 
-#[derive(Debug, Deserialize, Serialize)]
+#[derive(Debug, Deserialize, Serialize, Clone)]
 pub struct PkgConfigDependency {
-    pub name: String,
-    pub pkg_config_query: String,
+    pub name: Spanned<String>,
+    pub pkg_config_query: Spanned<String>,
 }
 
-#[derive(Debug, Deserialize, Serialize)]
+#[derive(Debug, Deserialize, Serialize, Clone)]
 pub struct ManualDependency {
-    pub name: String,
+    pub name: Spanned<String>,
     pub cflags: Option<String>,
     pub ldflags: Option<String>,
 }
 
 // Enum for subproject type
-#[derive(Debug, Deserialize, Serialize)]
+#[derive(Debug, Deserialize, Serialize, Clone)]
 #[serde(rename_all = "kebab-case")] // Matches the TOML string "binary", "library", "header-only"
 pub enum SubProjectType {
     Binary,
@@ -96,7 +104,7 @@ pub enum SubProjectType {
     HeaderOnly,
 }
 
-#[derive(Debug, Deserialize, Serialize)]
+#[derive(Debug, Deserialize, Serialize, Clone)]
 #[serde(untagged)]
 pub enum SubProjectDependency {
     Named(String),
@@ -107,7 +115,7 @@ pub enum SubProjectDependency {
 }
 
 // Subprojects (binaries, libraries, or header-only)
-#[derive(Debug, Deserialize, Serialize)]
+#[derive(Debug, Deserialize, Serialize, Clone)]
 pub struct SubProject {
     pub name: String,
     pub r#type: SubProjectType,
@@ -117,7 +125,7 @@ pub struct SubProject {
 }
 
 // Overrides
-#[derive(Debug, Deserialize, Serialize)]
+#[derive(Debug, Deserialize, Serialize, Clone)]
 pub struct Override {
     pub name: String,
     pub c_standard: Option<String>,
@@ -129,7 +137,7 @@ pub struct Override {
 }
 
 // Enum for subproject type
-#[derive(Debug, Deserialize, Serialize)]
+#[derive(Debug, Deserialize, Serialize, Clone)]
 #[serde(rename_all = "kebab-case")]
 pub enum CustomBuildRuleType {
     IfChanged,
@@ -138,7 +146,7 @@ pub enum CustomBuildRuleType {
 }
 
 // Custom build rules for assets like Vulkan shaders
-#[derive(Debug, Deserialize, Serialize)]
+#[derive(Debug, Deserialize, Serialize, Clone)]
 pub struct CustomBuildRule {
     pub name: String,
     pub description: Option<String>,
@@ -150,11 +158,19 @@ pub struct CustomBuildRule {
     pub rebuild_rule: CustomBuildRuleType,
 }
 
+// Additional information
+#[derive(Debug)]
+pub struct AdditionalInfo {
+    pub span: Range<usize>,
+    pub message: String,
+}
+
 #[derive(Debug)]
 pub struct Error {
     pub error_type: ErrorType,
     pub message: String,
     pub span: Option<Range<usize>>,
+    pub additional_info: Option<AdditionalInfo>,
 }
 
 #[derive(Debug)]
@@ -162,10 +178,19 @@ pub enum ErrorType {
     TomlParseError,
     IncorrectCompiler,
     UnsupportedCStandard,
+    DuplicateDependencySource,
+    DuplicateDependencyName,
+    DuplicateDependencyIncludeName,
+    CustomBuildMissing,
+    ExtraFieldNonCustomBuild,
+    InvalidPkgConfigQuery,
 }
 
 impl BuildSettings {
     fn check_compiler_details(&self) -> Result<(), Error> {
+        // NOTE: Compiler details
+        // Check if the compiler is in the path
+        // Check if the standard is supported
         let compiler = self.compiler.clone();
         let compiler_span = compiler.span();
         let compiler_name = compiler.into_inner();
@@ -185,6 +210,7 @@ impl BuildSettings {
                     error_type: ErrorType::IncorrectCompiler,
                     message: "Compiler not in path".to_string(),
                     span: Some(compiler_span),
+                    additional_info: None,
                 });
             }
         } else {
@@ -192,6 +218,7 @@ impl BuildSettings {
                 error_type: ErrorType::IncorrectCompiler,
                 message: "Compiler not in path".to_string(),
                 span: Some(compiler_span),
+                additional_info: None,
             });
         };
         let c_standard = self.c_standard.clone();
@@ -212,7 +239,172 @@ impl BuildSettings {
                 error_type: ErrorType::UnsupportedCStandard,
                 message: "Unsupported C standard".to_string(),
                 span: Some(c_standard_span),
+                additional_info: None,
             });
+        }
+        Ok(())
+    }
+}
+
+impl Iterator for Dependencies {
+    type Item = Dependency;
+
+    fn next(&mut self) -> Option<Self::Item> {
+        // First check remote dependencies
+        if let Some(remote) = self.remote.pop() {
+            return Some(Dependency::Remote(remote));
+        }
+        // Then check pkg-config dependencies
+        if let Some(pkg_config) = self.pkg_config.pop() {
+            return Some(Dependency::PkgConfig(pkg_config));
+        }
+        // Finally check manual dependencies
+        if let Some(manual) = self.manual.pop() {
+            return Some(Dependency::Manual(manual));
+        }
+        None
+    }
+}
+
+impl Dependencies {
+    fn check_dependencies(&self) -> Result<(), Error> {
+        // NOTE: Dependencies
+        // Verify duplicate dependencies are not present
+        // Verify no two dependencies share the same name or include_name
+        // Verify that build_command, build_output are present only in custom build_method
+        // Verify that pkg-config dependency exists
+
+        #[derive(Eq, PartialEq, Hash, Clone)]
+        struct RemoteInfo {
+            url: Spanned<String>,
+            version: Option<Spanned<String>>,
+        }
+
+        let mut url_set: HashSet<RemoteInfo> = HashSet::new();
+        let mut name_set: HashSet<Spanned<String>> = HashSet::new();
+        let mut include_name_set: HashSet<Spanned<String>> = HashSet::new();
+        for dep in self.clone() {
+            match dep {
+                Dependency::Remote(remote) => {
+                    let remote_info = RemoteInfo {
+                        url: remote.clone().into_inner().source.clone(),
+                        version: remote.clone().into_inner().version,
+                    };
+                    if !url_set.insert(remote_info.clone()) {
+                        return Err(Error {
+                            error_type: ErrorType::DuplicateDependencySource,
+                            message: "Duplicate dependency url with same versions".to_string(),
+                            span: Some(remote.into_inner().source.clone().span()),
+                            additional_info: Some(AdditionalInfo {
+                                message: "Previously defined here".to_string(),
+                                span: url_set.get(&remote_info).unwrap().url.span(),
+                            }),
+                        });
+                    }
+                    if !name_set.insert(remote.clone().into_inner().name.clone()) {
+                        return Err(Error {
+                            error_type: ErrorType::DuplicateDependencyName,
+                            message: "Duplicate dependency name".to_string(),
+                            span: Some(remote.clone().into_inner().name.clone().span()),
+                            additional_info: Some(AdditionalInfo {
+                                message: "Previously defined here".to_string(),
+                                span: name_set.get(&remote.into_inner().name).unwrap().span(),
+                            }),
+                        });
+                    }
+                    if let Some(include_name) = remote.clone().into_inner().include_name {
+                        if !include_name_set.insert(include_name.clone()) {
+                            return Err(Error {
+                                error_type: ErrorType::DuplicateDependencyIncludeName,
+                                message: "Duplicate dependency include name".to_string(),
+                                span: Some(include_name.clone().span()),
+                                additional_info: Some(AdditionalInfo {
+                                    message: "Previously defined here".to_string(),
+                                    span: include_name_set.get(&include_name).unwrap().span(),
+                                }),
+                            });
+                        }
+                    }
+
+                    if let Some(build_method) = remote.clone().into_inner().build_method {
+                        if build_method == RemoteBuildMethod::Custom {
+                            if remote.clone().into_inner().build_command.is_none() {
+                                return Err(Error {
+                                    error_type: ErrorType::CustomBuildMissing,
+                                    message: "Custom build method missing build_command"
+                                        .to_string(),
+                                    span: Some(remote.span()),
+                                    additional_info: None,
+                                });
+                            }
+                        } else {
+                            if let Some(build_output) = remote.clone().into_inner().build_output {
+                                return Err(Error {
+                                    error_type: ErrorType::ExtraFieldNonCustomBuild,
+                                    message: "Non-Custom build method has build_output".to_string(),
+                                    span: Some(build_output.span()),
+                                    additional_info: None,
+                                });
+                            }
+                            if let Some(build_command) = remote.clone().into_inner().build_command {
+                                return Err(Error {
+                                    error_type: ErrorType::ExtraFieldNonCustomBuild,
+                                    message: "non-Custom build method has build_command"
+                                        .to_string(),
+                                    span: Some(build_command.span()),
+                                    additional_info: None,
+                                });
+                            }
+                        }
+                    }
+                }
+                Dependency::PkgConfig(pkg_config) => {
+                    if !name_set.insert(pkg_config.clone().into_inner().name.clone()) {
+                        return Err(Error {
+                            error_type: ErrorType::DuplicateDependencyName,
+                            message: "Duplicate dependency name".to_string(),
+                            span: Some(pkg_config.clone().into_inner().name.clone().span()),
+                            additional_info: Some(AdditionalInfo {
+                                message: "Previously defined here".to_string(),
+                                span: name_set.get(&pkg_config.into_inner().name).unwrap().span(),
+                            }),
+                        });
+                    }
+
+                    // Check if pkg-config dependency exists
+                    let status = Command::new("pkg-config")
+                        .arg("--exists")
+                        .arg(
+                            pkg_config
+                                .clone()
+                                .into_inner()
+                                .pkg_config_query
+                                .into_inner(),
+                        )
+                        .status();
+                    if status.is_err() || status.unwrap().code() != Some(0) {
+                        return Err(Error {
+                            error_type: ErrorType::InvalidPkgConfigQuery,
+                            message: "Pkg-config dependency not found".to_string(),
+                            span: Some(pkg_config.into_inner().pkg_config_query.clone().span()),
+                            additional_info: None,
+                        });
+                    }
+                }
+                Dependency::Manual(manual) => {
+                    if !name_set.insert(manual.clone().into_inner().name.clone()) {
+                        return Err(Error {
+                            error_type: ErrorType::DuplicateDependencyName,
+                            message: "Duplicate dependency name".to_string(),
+                            span: Some(manual.clone().into_inner().name.span()),
+                            additional_info: Some(AdditionalInfo {
+                                message: "Previously defined here".to_string(),
+                                span: name_set.get(&manual.into_inner().name).unwrap().span(),
+                            }),
+                        });
+                    }
+                }
+            }
         }
         Ok(())
     }
@@ -229,25 +421,15 @@ impl BuildConfig {
                 error_type: ErrorType::TomlParseError,
                 message: e.to_string(),
                 span: e.span(),
+                additional_info: None,
             }),
             Ok(config) => Ok(config),
         }
     }
 
-    fn check_dependencies(&self) -> Result<(), Error> {
-        // TODO: Implement
-        Ok(())
-    }
-
     pub fn verify_config(&self) -> Result<(), Error> {
         self.build.check_compiler_details()?;
-        self.check_dependencies()?;
-        // NOTE: Dependencies
-        // TODO: Verify duplicate dependencies are not present
-        // Verify no two dependencies share the same name or include_name
-        // Verify that build_command, build_output are present only in custom
-        // build_method
-        // Verify that pkg-config dependency exists
+        self.dependencies.check_dependencies()?;
         //
         // NOTE: Subprojects
         // TODO: Verify duplicate subproject names are not present

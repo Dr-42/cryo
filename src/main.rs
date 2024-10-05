@@ -29,38 +29,40 @@ pub mod build_config;
 pub mod cli;
 pub mod logger;
 
-fn main() -> Result<(), Box<dyn std::error::Error>> {
+fn emit_config_error(e: build_config::Error) {
     let config_path = "sample.toml";
-    let config_contents = std::fs::read_to_string(config_path)?;
+    let config_contents = std::fs::read_to_string(config_path).unwrap();
     let mut files = SimpleFiles::new();
     let file_id = files.add(config_path, config_contents);
-    let config = match build_config::BuildConfig::load_config("sample.toml") {
+    let writer = StandardStream::stderr(ColorChoice::Always);
+    let config = codespan_reporting::term::Config::default();
+    let mut labels_vec = Vec::new();
+
+    labels_vec.push(Label::primary(file_id, e.span.unwrap()).with_message(e.message));
+    if let Some(additional_info) = e.additional_info {
+        labels_vec.push(
+            Label::secondary(file_id, additional_info.span).with_message(additional_info.message),
+        );
+    }
+
+    let diag = Diagnostic::error()
+        .with_message("Error parsing config")
+        .with_labels(labels_vec);
+
+    term::emit(&mut writer.lock(), &config, &files, &diag).unwrap();
+}
+
+fn main() -> Result<(), Box<dyn std::error::Error>> {
+    let config_path = "sample.toml";
+    let config = match build_config::BuildConfig::load_config(config_path) {
         Ok(config) => config,
         Err(e) => {
-            let writer = StandardStream::stderr(ColorChoice::Always);
-            let config = codespan_reporting::term::Config::default();
-
-            let diag = Diagnostic::error()
-                .with_message("Error parsing config")
-                .with_labels(vec![
-                    Label::primary(file_id, e.span.unwrap()).with_message(e.message)
-                ]);
-
-            term::emit(&mut writer.lock(), &config, &files, &diag)?;
+            emit_config_error(e);
             std::process::exit(1);
         }
     };
     if let Err(e) = config.verify_config() {
-        let writer = StandardStream::stderr(ColorChoice::Always);
-        let config = codespan_reporting::term::Config::default();
-
-        let diag = Diagnostic::error()
-            .with_message("Error parsing config")
-            .with_labels(vec![
-                Label::primary(file_id, e.span.unwrap()).with_message(e.message)
-            ]);
-
-        term::emit(&mut writer.lock(), &config, &files, &diag)?;
+        emit_config_error(e);
         std::process::exit(1);
     }
     cli::parse();
