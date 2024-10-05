@@ -69,13 +69,12 @@ impl BuildConfig {
             SubProject::verify_subprojects(self.subprojects.clone(), &self.dependencies.clone())?;
         self.subprojects = new_subprojects;
 
-        // NOTE: Overrrides
-        // TODO: Verify duplicate override names are not present
-        // Verify that override names match subproject names
-        //
-        // NOTE: Custom build rules
-        // TODO: Verify duplicate custom build rule names are not present
-        // Verify that src_dir and output_dir exist
-        todo!()
+        if let Some(overrides) = &self.overrides {
+            Override::verify_overrides(overrides, &self.subprojects)?;
+        }
+        if let Some(custom_build_rules) = &self.custom_build_rules {
+            CustomBuildRule::verify_custom_build_rules(custom_build_rules)?;
+        }
+        Ok(())
     }
 }

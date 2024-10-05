@@ -56,6 +56,8 @@ pub enum ErrorType {
     DuplicateSubprojectName,
     InvalidSubprojectDependency,
     CircularDependency,
+    OverrideNameConflict,
+    DuplicateCustomBuildRuleName,
 }
 
 impl Error {

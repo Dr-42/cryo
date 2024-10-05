@@ -17,6 +17,9 @@
 * along with iceforge.  If not, see <https://www.gnu.org/licenses/>.
 */
 use serde::{Deserialize, Serialize};
+use toml::Spanned;
+
+use super::error::{AdditionalInfo, Error, ErrorType};
 
 #[derive(Debug, Deserialize, Serialize, Clone)]
 #[serde(rename_all = "kebab-case")]
@@ -29,7 +32,7 @@ pub enum CustomBuildRuleType {
 // Custom build rules for assets like Vulkan shaders
 #[derive(Debug, Deserialize, Serialize, Clone)]
 pub struct CustomBuildRule {
-    pub name: String,
+    pub name: Spanned<String>,
     pub description: Option<String>,
     pub src_dir: String,
     pub output_dir: String,
@@ -37,4 +40,32 @@ pub struct CustomBuildRule {
     pub output_extension: String,
     pub command: String,
     pub rebuild_rule: CustomBuildRuleType,
+}
+
+impl CustomBuildRule {
+    pub fn verify_custom_build_rules(selfs: &[Self]) -> Result<(), Error> {
+        // NOTE: Custom build rules
+        // Verify duplicate custom build rule names are not present
+        let mut name_set = std::collections::HashSet::new();
+
+        for cbr in selfs {
+            if !name_set.insert(cbr.name.clone()) {
+                return Err(Error {
+                    error_type: ErrorType::DuplicateCustomBuildRuleName,
+                    message: format!(
+                        "Duplicate custom build rule name {}",
+                        cbr.name.clone().into_inner()
+                    ),
+                    span: Some(cbr.name.span()),
+                    additional_info: Some(AdditionalInfo {
+                        span: name_set.get(&cbr.name).unwrap().span(),
+                        message: "Previous definition".to_string(),
+                    }),
+                });
+            }
+        }
+        //  TODO: Verify that src_dir and output_dir exist
+
+        Ok(())
+    }
 }
