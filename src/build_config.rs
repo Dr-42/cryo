@@ -62,10 +62,12 @@ impl BuildConfig {
         }
     }
 
-    pub fn verify_config(&self) -> Result<(), Error> {
+    pub fn verify_config(&mut self) -> Result<(), Error> {
         self.build.check_compiler_details()?;
         self.dependencies.check_dependencies()?;
-        SubProject::verify_subprojects(self.subprojects.clone())?;
+        let new_subprojects =
+            SubProject::verify_subprojects(self.subprojects.clone(), &self.dependencies.clone())?;
+        self.subprojects = new_subprojects;
 
         // NOTE: Overrrides
         // TODO: Verify duplicate override names are not present

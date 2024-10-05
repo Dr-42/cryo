@@ -61,6 +61,26 @@ name = "glfw"
 #cflags = ""
 ldflags = "-lglfw"
 
+# Header-only libraries
+[[subprojects]]
+name = "mathlib"
+type = "header-only"
+include_dirs = ["src/mathlib/include"]
+dependencies = []
+
+[[subprojects]]
+name = "dslib"
+type = "library"
+include_dirs = ["src/dslib/include"]
+dependencies = ["mathlib"]
+
+[[subprojects]]
+name = "game"
+type = "binary"
+src_dir = "src/game"
+include_dirs = ["src/game/include", "src/core/include"]
+dependencies = ["core", "mylib_v2"]					# This binary depends on core (local library) and mylib_v2 (remote)
+
 # Subprojects (each subproject can have its own configuration)
 [[subprojects]]
 name = "core"
@@ -69,22 +89,10 @@ src_dir = "src/core"							# Directory where source files are located
 include_dirs = ["src/core/include"]
 dependencies = [
 	{ name = "mylib_v2", imports = ["mylibA", "mylibB"] },
+	"dslib",
 	"freetype",
 	"glfw"
 ]	# List of dependencies for this subproject
-
-# Header-only libraries
-[[subprojects]]
-name = "mathlib"
-type = "header-only"
-include_dirs = ["src/mathlib/include"]
-
-[[subprojects]]
-name = "game"
-type = "binary"
-src_dir = "src/game"
-include_dirs = ["src/game/include", "src/core/include"]
-dependencies = ["core", "mylib_v2"]					# This binary depends on core (local library) and mylib_v2 (remote)
 
 # Custom build rules for assets (like Vulkan shaders or any custom source)
 # These rules can specify specific source files, output locations, and triggers (e.g., change detection)

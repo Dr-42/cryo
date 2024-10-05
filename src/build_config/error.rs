@@ -53,6 +53,9 @@ pub enum ErrorType {
     CustomBuildMissing,
     ExtraFieldNonCustomBuild,
     InvalidPkgConfigQuery,
+    DuplicateSubprojectName,
+    InvalidSubprojectDependency,
+    CircularDependency,
 }
 
 impl Error {

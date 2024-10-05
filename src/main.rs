@@ -23,7 +23,7 @@ pub mod logger;
 
 fn main() -> Result<(), Box<dyn std::error::Error>> {
     let config_path = "sample.toml";
-    let config = match build_config::BuildConfig::load_config(config_path) {
+    let mut config = match build_config::BuildConfig::load_config(config_path) {
         Ok(config) => config,
         Err(e) => {
             e.emit_config_error(config_path);

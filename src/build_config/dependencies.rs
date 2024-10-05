@@ -95,6 +95,28 @@ impl Iterator for Dependencies {
 }
 
 impl Dependencies {
+    pub fn has_dependency(&self, name: &str) -> bool {
+        for dep in self.clone() {
+            match dep {
+                Dependency::Remote(dep) => {
+                    if dep.into_inner().name.into_inner() == name {
+                        return true;
+                    }
+                }
+                Dependency::PkgConfig(dep) => {
+                    if dep.into_inner().name.into_inner() == name {
+                        return true;
+                    }
+                }
+                Dependency::Manual(dep) => {
+                    if dep.into_inner().name.into_inner() == name {
+                        return true;
+                    }
+                }
+            }
+        }
+        false
+    }
     pub fn check_dependencies(&self) -> Result<(), Error> {
         // NOTE: Dependencies
         // Verify duplicate dependencies are not present
