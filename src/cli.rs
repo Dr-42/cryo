@@ -17,7 +17,7 @@
 * along with iceforge.  If not, see <https://www.gnu.org/licenses/>.
 */
 
-use clap::{ArgGroup, Parser, Subcommand};
+use clap::{ArgGroup, CommandFactory, Parser, Subcommand};
 
 /// Iceforge Build Tool
 #[derive(Parser, Debug)]
@@ -218,7 +218,10 @@ fn handle_init(opts: InitOptions) {
 pub fn parse() {
     let cli = IceforgeCLI::parse();
 
+    let mut hit_something = cli.build || cli.clean || cli.run;
+
     if let Some(command) = cli.command {
+        hit_something = true;
         match command {
             Commands::Build(build_opts) => handle_build(build_opts),
             Commands::Run(run_opts) => handle_run(run_opts),
@@ -242,5 +245,9 @@ pub fn parse() {
     }
     if cli.run {
         handle_run(RunOptions::default());
+    }
+
+    if !hit_something {
+        IceforgeCLI::command().print_help().unwrap();
     }
 }

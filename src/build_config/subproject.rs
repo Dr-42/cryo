@@ -153,11 +153,7 @@ impl SubProject {
             // Recur for all dependencies (adjacent nodes)
             if let Some(dependencies) = dependency_map.get(project) {
                 for dep in dependencies {
-                    if let Err(cycle) =
-                        Self::dfs_cycle_detection(dep, dependency_map, visited, stack, path)
-                    {
-                        return Err(cycle); // Propagate the cycle back up the stack
-                    }
+                    Self::dfs_cycle_detection(dep, dependency_map, visited, stack, path)?
                 }
             }
 
