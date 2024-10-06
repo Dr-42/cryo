@@ -19,7 +19,9 @@
 
 pub mod build_config;
 pub mod cli;
+pub mod error;
 pub mod logger;
+pub mod package;
 
 fn main() -> Result<(), Box<dyn std::error::Error>> {
     let config_path = "sample.toml";

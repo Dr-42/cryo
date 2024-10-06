@@ -24,14 +24,13 @@ use toml::de::Error as TomlError; // For handling deserialization errors
 mod build_settings;
 mod custom_build_rule;
 mod dependencies;
-mod error;
 mod r#override;
 mod subproject;
 
+use crate::error::{Error, ErrorType};
 use build_settings::BuildSettings;
 use custom_build_rule::CustomBuildRule;
 use dependencies::Dependencies;
-use error::{Error, ErrorType};
 use r#override::Override;
 use subproject::SubProject;
 

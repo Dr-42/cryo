@@ -1,5 +1,3 @@
-use std::collections::HashSet;
-
 /*
 * Copyright (c) 2024, Dr. Spandan Roy
 *
@@ -19,12 +17,11 @@ use std::collections::HashSet;
 * along with iceforge.  If not, see <https://www.gnu.org/licenses/>.
 */
 use serde::{Deserialize, Serialize};
+use std::collections::HashSet;
 use toml::Spanned;
 
-use super::{
-    error::{AdditionalInfo, Error, ErrorType},
-    subproject::SubProject,
-};
+use super::subproject::SubProject;
+use crate::error::{AdditionalInfo, Error, ErrorType};
 // Overrides
 #[derive(Debug, Deserialize, Serialize, Clone)]
 pub struct Override {

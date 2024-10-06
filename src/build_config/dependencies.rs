@@ -20,7 +20,7 @@ use serde::{Deserialize, Serialize};
 use std::{collections::HashSet, process::Command};
 use toml::Spanned;
 
-use super::error::{AdditionalInfo, Error, ErrorType};
+use crate::error::{AdditionalInfo, Error, ErrorType};
 
 // External dependencies (remote packages with versioning)
 #[derive(Debug, Deserialize, Serialize, Clone)]

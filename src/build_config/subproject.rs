@@ -21,7 +21,7 @@ use serde::{Deserialize, Serialize};
 use std::collections::{HashMap, HashSet};
 use toml::Spanned;
 
-use super::error::{AdditionalInfo, ErrorType};
+use crate::error::{AdditionalInfo, ErrorType};
 
 // Enum for subproject type
 #[derive(Debug, Deserialize, Serialize, Clone, PartialEq)]

@@ -19,7 +19,7 @@
 use serde::{Deserialize, Serialize};
 use toml::Spanned;
 
-use super::error::{AdditionalInfo, Error, ErrorType};
+use crate::error::{AdditionalInfo, Error, ErrorType};
 
 #[derive(Debug, Deserialize, Serialize, Clone)]
 #[serde(rename_all = "kebab-case")]
